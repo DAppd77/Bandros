@@ -4,10 +4,125 @@
  * 1. Ticket Quantity Counter (Beli > 1 tiket)
  * 2. Tab Informasi Terbaru (Empty State)
  * 3. Fitur Riwayat Pembelian (Purchase History List & Storage)
+ * 4. Step 1 (Pemesanan) <-> Step 2 (Pembayaran) Multi-Step Flow
+ * 5. Synchronized Desktop and Mobile Experience
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // --- Central State ---
+  // ==========================================================================
+  // 1. ALL DOM ELEMENT DECLARATIONS (Hoisted at top to prevent TDZ errors)
+  // ==========================================================================
+
+  // Containers & Views
+  const desktopView = document.getElementById('desktop-view');
+  const mobileView = document.getElementById('mobile-view');
+  const viewDesktopBtn = document.getElementById('view-desktop-btn');
+  const viewMobileBtn = document.getElementById('view-mobile-btn');
+  const screenJadwal = document.getElementById('screen-jadwal');
+  const screenPembayaran = document.getElementById('screen-pembayaran');
+
+  // Desktop Steps & Navigation
+  const desktopStepPemesanan = document.getElementById('desktop-step-pemesanan');
+  const desktopStepPembayaran = document.getElementById('desktop-step-pembayaran');
+  const dStepNode1 = document.getElementById('d-step-node-1');
+  const dStepNode2 = document.getElementById('d-step-node-2');
+  const dStepConnector = document.getElementById('d-step-connector');
+  const navJadwalLink = document.getElementById('nav-jadwal-link');
+  const navBayarLink = document.getElementById('nav-bayar-link');
+  const dBtnProceedPayment = document.getElementById('d-btn-proceed-payment');
+  const dBtnBackToBooking = document.getElementById('d-btn-back-to-booking');
+
+  // Mobile Screen Action Buttons
+  const btnProceedOrder = document.getElementById('btn-proceed-order');
+  const btnPaymentBack = document.getElementById('btn-payment-back');
+  const btnJadwalBack = document.getElementById('btn-jadwal-back');
+  const btnShare = document.getElementById('btn-share');
+  const btnSaveRoute = document.getElementById('btn-save-route');
+  const saveTitleText = document.getElementById('save-title-text');
+  const btnChooseSchedule = document.getElementById('btn-choose-schedule');
+
+  // Quantity Stepper Elements
+  const dQtyVal = document.getElementById('d-qty-val');
+  const dQtyMinus = document.getElementById('d-qty-minus');
+  const dQtyPlus = document.getElementById('d-qty-plus');
+  const dQtyHint = document.getElementById('d-qty-hint');
+
+  const mQtyVal = document.getElementById('m-qty-val');
+  const mQtyMinus = document.getElementById('m-qty-minus');
+  const mQtyPlus = document.getElementById('m-qty-plus');
+  const mQtyHint = document.getElementById('m-qty-hint');
+
+  // Mobile Tabs
+  const tabTentang = document.getElementById('tab-tentang');
+  const tabJadwal = document.getElementById('tab-jadwal');
+  const tabInfo = document.getElementById('tab-info');
+  const routeDescBox = document.getElementById('route-desc-box');
+  const tabInfoContent = document.getElementById('tab-info-content');
+
+  const mobileDateContainer = document.getElementById('mobile-date-container');
+  const mobileQtyContainer = document.getElementById('mobile-qty-container');
+  const mobileSearchFilter = document.getElementById('mobile-search-filter');
+  const mobileBusList = document.getElementById('mobile-bus-list');
+
+  // Information Modals
+  const navInfoLink = document.getElementById('nav-info-link');
+  const infoModal = document.getElementById('info-modal');
+  const btnCloseInfoModal = document.getElementById('btn-close-info-modal');
+
+  // Purchase History
+  const navHistoryLink = document.getElementById('nav-history-link');
+  const btnMobileHistory = document.getElementById('btn-mobile-history');
+  const historyModal = document.getElementById('history-modal');
+  const btnCloseHistoryModal = document.getElementById('btn-close-history-modal');
+  const historyItemsContainer = document.getElementById('history-items-container');
+  const historyCountBadge = document.getElementById('history-count-badge');
+
+  // Date and Bus Collections
+  const desktopDateItems = document.querySelectorAll('.desktop-date-item');
+  const mobileDateCards = document.querySelectorAll('.date-card');
+  const desktopBusCards = document.querySelectorAll('.desktop-bus-card');
+  const mobileBusCards = document.querySelectorAll('.bus-item-card');
+
+  // Search & Filter
+  const desktopBusSearch = document.getElementById('desktop-bus-search');
+  const desktopChips = document.querySelectorAll('.d-chip');
+  const mobileBusSearch = document.getElementById('bus-search-input');
+  const btnOpenFilter = document.getElementById('btn-open-filter');
+  const filterModal = document.getElementById('filter-modal');
+  const btnCloseFilterModal = document.getElementById('btn-close-filter-modal');
+  const btnApplyFilter = document.getElementById('btn-apply-filter');
+  const btnResetFilter = document.getElementById('btn-reset-filter');
+  const filterChips = document.querySelectorAll('.filter-chip');
+  const sortToggle = document.getElementById('sort-toggle');
+  const currentSortText = document.getElementById('current-sort');
+
+  // Payment Methods
+  const dMethodQris = document.getElementById('d-method-qris');
+  const dMethodDana = document.getElementById('d-method-dana');
+  const mMethodQris = document.getElementById('method-qris');
+  const mMethodDana = document.getElementById('method-dana');
+
+  // Countdown
+  const desktopCountdown = document.getElementById('desktop-countdown');
+  const mobileCountdown = document.getElementById('countdown-val');
+
+  // Checkout & Modals
+  const dBtnPayNow = document.getElementById('d-btn-pay-now');
+  const mBtnPayNow = document.getElementById('btn-pay-now');
+  const paymentModal = document.getElementById('payment-modal');
+  const btnClosePaymentModal = document.getElementById('btn-close-payment-modal');
+  const modalPaymentTitle = document.getElementById('modal-payment-title');
+  const modalPaymentBody = document.getElementById('modal-payment-body');
+  const successModal = document.getElementById('success-modal');
+  const btnDownloadTicket = document.getElementById('btn-download-ticket');
+  const btnReturnHome = document.getElementById('btn-return-home');
+  const toastNotif = document.getElementById('toast-notif');
+  const toastMsg = document.getElementById('toast-msg');
+
+
+  // ==========================================================================
+  // 2. CENTRAL APPLICATION STATE
+  // ==========================================================================
   const state = {
     currentStep: 1, // 1: Pemesanan, 2: Pembayaran
     selectedDate: '2026-11-26',
@@ -28,9 +143,11 @@ document.addEventListener('DOMContentLoaded', () => {
     savedRoute: false,
     activePaymentMethod: 'qris',
     countdownSeconds: 6 * 60 + 55, // 06:55
-    viewMode: 'desktop', // 'desktop' | 'mobile'
-    
-    // Purchase History List (Fitur Riwayat Pembelian)
+    viewMode: window.innerWidth < 768 ? 'mobile' : 'desktop',
+    sortAscending: true,
+    activeTimeFilter: 'all',
+
+    // Initial Purchase History
     purchaseHistory: [
       {
         id: 'BDRS-71934',
@@ -45,176 +162,276 @@ document.addEventListener('DOMContentLoaded', () => {
     ]
   };
 
-  // --- View Switcher (Desktop vs Mobile) ---
-  const desktopView = document.getElementById('desktop-view');
-  const mobileView = document.getElementById('mobile-view');
-  const viewDesktopBtn = document.getElementById('view-desktop-btn');
-  const viewMobileBtn = document.getElementById('view-mobile-btn');
 
+  // ==========================================================================
+  // 3. TOAST NOTIFICATION UTILITY
+  // ==========================================================================
+  let toastTimer = null;
+  function showToast(message) {
+    if (!toastNotif || !toastMsg) return;
+    toastMsg.textContent = message;
+    toastNotif.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastNotif.style.display = 'none';
+    }, 2600);
+  }
+
+
+  // ==========================================================================
+  // 4. VIEW SWITCHER (Desktop vs Mobile)
+  // ==========================================================================
   function switchView(mode) {
     state.viewMode = mode;
     if (mode === 'desktop') {
-      desktopView.style.display = 'block';
-      mobileView.style.display = 'none';
-      viewDesktopBtn.classList.add('active');
-      viewMobileBtn.classList.remove('active');
+      if (desktopView) desktopView.style.display = 'block';
+      if (mobileView) mobileView.style.display = 'none';
+      if (viewDesktopBtn) viewDesktopBtn.classList.add('active');
+      if (viewMobileBtn) viewMobileBtn.classList.remove('active');
     } else {
-      desktopView.style.display = 'none';
-      mobileView.style.display = 'flex';
-      viewMobileBtn.classList.add('active');
-      viewDesktopBtn.classList.remove('active');
-      if (state.currentStep === 1) {
-        screenJadwal.classList.add('active');
-        screenPembayaran.classList.remove('active');
-      } else {
-        screenPembayaran.classList.add('active');
-        screenJadwal.classList.remove('active');
+      if (desktopView) desktopView.style.display = 'none';
+      if (mobileView) mobileView.style.display = 'flex';
+      if (viewMobileBtn) viewMobileBtn.classList.add('active');
+      if (viewDesktopBtn) viewDesktopBtn.classList.remove('active');
+
+      if (screenJadwal && screenPembayaran) {
+        if (state.currentStep === 1) {
+          screenJadwal.classList.add('active');
+          screenPembayaran.classList.remove('active');
+        } else {
+          screenPembayaran.classList.add('active');
+          screenJadwal.classList.remove('active');
+        }
       }
     }
   }
 
-  viewDesktopBtn.addEventListener('click', () => switchView('desktop'));
-  viewMobileBtn.addEventListener('click', () => switchView('mobile'));
+  if (viewDesktopBtn) viewDesktopBtn.addEventListener('click', () => switchView('desktop'));
+  if (viewMobileBtn) viewMobileBtn.addEventListener('click', () => switchView('mobile'));
 
-  if (window.innerWidth < 768) {
-    switchView('mobile');
+  // Synchronize on window resize
+  window.addEventListener('resize', () => {
+    if (window.innerWidth < 768 && state.viewMode !== 'mobile') {
+      switchView('mobile');
+    }
+  });
+
+
+  // ==========================================================================
+  // 5. STEP MANAGEMENT (Step 1 Pemesanan <-> Step 2 Pembayaran)
+  // ==========================================================================
+  function goToStep(step) {
+    state.currentStep = step;
+
+    if (step === 1) {
+      if (desktopStepPemesanan) desktopStepPemesanan.style.display = 'block';
+      if (desktopStepPembayaran) desktopStepPembayaran.style.display = 'none';
+
+      if (dStepNode1) dStepNode1.className = 'step-node active';
+      if (dStepNode2) dStepNode2.className = 'step-node';
+      if (dStepConnector) dStepConnector.className = 'step-connector';
+
+      if (navJadwalLink) navJadwalLink.classList.add('active');
+      if (navBayarLink) navBayarLink.classList.remove('active');
+
+      if (screenJadwal) screenJadwal.classList.add('active');
+      if (screenPembayaran) screenPembayaran.classList.remove('active');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      if (desktopStepPemesanan) desktopStepPemesanan.style.display = 'none';
+      if (desktopStepPembayaran) desktopStepPembayaran.style.display = 'block';
+
+      if (dStepNode1) dStepNode1.className = 'step-node completed';
+      if (dStepNode2) dStepNode2.className = 'step-node active';
+      if (dStepConnector) dStepConnector.className = 'step-connector completed';
+
+      if (navBayarLink) navBayarLink.classList.add('active');
+      if (navJadwalLink) navJadwalLink.classList.remove('active');
+
+      if (screenPembayaran) screenPembayaran.classList.add('active');
+      if (screenJadwal) screenJadwal.classList.remove('active');
+
+      updateAllDetails();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
-  // --- Toast Notification ---
-  const toastNotif = document.getElementById('toast-notif');
-  const toastMsg = document.getElementById('toast-msg');
-
-  function showToast(message) {
-    toastMsg.textContent = message;
-    toastNotif.style.display = 'block';
-    setTimeout(() => {
-      toastNotif.style.display = 'none';
-    }, 2800);
+  if (dBtnProceedPayment) {
+    dBtnProceedPayment.addEventListener('click', () => {
+      goToStep(2);
+      showToast(`Melanjutkan pemesanan ${state.ticketQty} tiket.`);
+    });
   }
 
-  // --- FEATURE 1: TICKET QUANTITY COUNTER (TAMBAH TIKET) ---
-  const dQtyVal = document.getElementById('d-qty-val');
-  const dQtyMinus = document.getElementById('d-qty-minus');
-  const dQtyPlus = document.getElementById('d-qty-plus');
-  const dQtyHint = document.getElementById('d-qty-hint');
+  if (dBtnBackToBooking) {
+    dBtnBackToBooking.addEventListener('click', () => goToStep(1));
+  }
 
-  const mQtyVal = document.getElementById('m-qty-val');
-  const mQtyMinus = document.getElementById('m-qty-minus');
-  const mQtyPlus = document.getElementById('m-qty-plus');
-  const mQtyHint = document.getElementById('m-qty-hint');
+  if (dStepNode1) dStepNode1.addEventListener('click', () => goToStep(1));
+  if (dStepNode2) dStepNode2.addEventListener('click', () => goToStep(2));
+  if (navJadwalLink) navJadwalLink.addEventListener('click', (e) => { e.preventDefault(); goToStep(1); });
+  if (navBayarLink) navBayarLink.addEventListener('click', (e) => { e.preventDefault(); goToStep(2); });
 
+  // Mobile transitions
+  if (btnProceedOrder) {
+    btnProceedOrder.addEventListener('click', () => goToStep(2));
+  }
+
+  if (btnPaymentBack) {
+    btnPaymentBack.addEventListener('click', () => goToStep(1));
+  }
+
+  if (btnJadwalBack) {
+    btnJadwalBack.addEventListener('click', () => {
+      showToast('Halaman beranda Bandros');
+    });
+  }
+
+  if (btnShare) {
+    btnShare.addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({
+          title: 'Jadwal Bandros - Bandung Tour On Bus',
+          text: 'Pesan tiket Bandros sekarang keliling Kota Bandung!',
+          url: window.location.href
+        }).catch(() => {});
+      } else {
+        showToast('Tautan disalin ke papan klip!');
+      }
+    });
+  }
+
+  if (btnSaveRoute) {
+    btnSaveRoute.addEventListener('click', () => {
+      state.savedRoute = !state.savedRoute;
+      if (saveTitleText) {
+        saveTitleText.textContent = state.savedRoute ? 'Tersimpan!' : 'Simpan rute';
+      }
+      showToast(state.savedRoute ? 'Rute Bandung Tour disimpan ke favorit!' : 'Rute dihapus dari favorit');
+    });
+  }
+
+  if (btnChooseSchedule) {
+    btnChooseSchedule.addEventListener('click', () => {
+      if (tabJadwal) tabJadwal.click();
+      if (mobileDateContainer) {
+        mobileDateContainer.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  }
+
+
+  // ==========================================================================
+  // 6. FEATURE 1: TICKET QUANTITY COUNTER (TAMBAH TIKET)
+  // ==========================================================================
   function setTicketQty(newQty) {
     const maxSeats = state.selectedBus.seatsAvailable;
     if (newQty < 1) newQty = 1;
     if (newQty > maxSeats) {
       newQty = maxSeats;
-      showToast(`Maksimal ${maxSeats} kursi tersedia untuk jadwal ini.`);
+      showToast(`Maksimal ${maxSeats} kursi tersedia untuk jam ini.`);
     }
 
     state.ticketQty = newQty;
 
-    // Update Desktop elements
-    dQtyVal.textContent = newQty;
-    dQtyMinus.disabled = newQty <= 1;
-    dQtyPlus.disabled = newQty >= maxSeats;
-    dQtyHint.textContent = `Maks. ${maxSeats} tiket tersedia`;
+    // Desktop
+    if (dQtyVal) dQtyVal.textContent = newQty;
+    if (dQtyMinus) dQtyMinus.disabled = newQty <= 1;
+    if (dQtyPlus) dQtyPlus.disabled = newQty >= maxSeats;
+    if (dQtyHint) dQtyHint.textContent = `Maks. ${maxSeats} tiket tersedia`;
 
-    // Update Mobile elements
-    mQtyVal.textContent = newQty;
-    mQtyMinus.disabled = newQty <= 1;
-    mQtyPlus.disabled = newQty >= maxSeats;
-    mQtyHint.textContent = `Maks. ${maxSeats} kursi`;
+    // Mobile
+    if (mQtyVal) mQtyVal.textContent = newQty;
+    if (mQtyMinus) mQtyMinus.disabled = newQty <= 1;
+    if (mQtyPlus) mQtyPlus.disabled = newQty >= maxSeats;
+    if (mQtyHint) mQtyHint.textContent = `Maks. ${maxSeats} kursi`;
 
-    // Refresh all prices and labels
+    // Refresh pricing calculations across all elements
     updateAllDetails();
   }
 
-  dQtyMinus.addEventListener('click', () => setTicketQty(state.ticketQty - 1));
-  dQtyPlus.addEventListener('click', () => setTicketQty(state.ticketQty + 1));
-  mQtyMinus.addEventListener('click', () => setTicketQty(state.ticketQty - 1));
-  mQtyPlus.addEventListener('click', () => setTicketQty(state.ticketQty + 1));
+  if (dQtyMinus) dQtyMinus.addEventListener('click', () => setTicketQty(state.ticketQty - 1));
+  if (dQtyPlus) dQtyPlus.addEventListener('click', () => setTicketQty(state.ticketQty + 1));
+  if (mQtyMinus) mQtyMinus.addEventListener('click', () => setTicketQty(state.ticketQty - 1));
+  if (mQtyPlus) mQtyPlus.addEventListener('click', () => setTicketQty(state.ticketQty + 1));
 
 
-  // --- FEATURE 2: TAB INFORMASI TERBARU (EMPTY STATE) ---
-  const tabTentang = document.getElementById('tab-tentang');
-  const tabJadwal = document.getElementById('tab-jadwal');
-  const tabInfo = document.getElementById('tab-info');
-  const routeDescBox = document.getElementById('route-desc-box');
-  const tabInfoContent = document.getElementById('tab-info-content');
+  // ==========================================================================
+  // 7. FEATURE 2: TAB INFORMASI TERBARU (EMPTY STATE)
+  // ==========================================================================
+  if (navInfoLink) {
+    navInfoLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (infoModal) infoModal.style.display = 'flex';
+    });
+  }
 
-  const mobileDateContainer = document.getElementById('mobile-date-container');
-  const mobileQtyContainer = document.getElementById('mobile-qty-container');
-  const mobileSearchFilter = document.getElementById('mobile-search-filter');
-  const mobileBusList = document.getElementById('mobile-bus-list');
+  if (btnCloseInfoModal) {
+    btnCloseInfoModal.addEventListener('click', () => {
+      if (infoModal) infoModal.style.display = 'none';
+    });
+  }
 
-  const navInfoLink = document.getElementById('nav-info-link');
-  const infoModal = document.getElementById('info-modal');
-  const btnCloseInfoModal = document.getElementById('btn-close-info-modal');
+  // Mobile Tabs
+  if (tabTentang) {
+    tabTentang.addEventListener('click', () => {
+      tabTentang.classList.add('active');
+      if (tabJadwal) tabJadwal.classList.remove('active');
+      if (tabInfo) tabInfo.classList.remove('active');
 
-  // Desktop Navbar Info link opens info modal
-  navInfoLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    infoModal.style.display = 'flex';
-  });
+      if (routeDescBox) routeDescBox.style.display = 'block';
+      if (tabInfoContent) tabInfoContent.style.display = 'none';
 
-  btnCloseInfoModal.addEventListener('click', () => {
-    infoModal.style.display = 'none';
-  });
+      if (mobileDateContainer) mobileDateContainer.style.display = 'none';
+      if (mobileQtyContainer) mobileQtyContainer.style.display = 'none';
+      if (mobileSearchFilter) mobileSearchFilter.style.display = 'none';
+      if (mobileBusList) mobileBusList.style.display = 'none';
+    });
+  }
 
-  // Mobile Tabs switching
-  tabTentang.addEventListener('click', () => {
-    tabTentang.classList.add('active');
-    tabJadwal.classList.remove('active');
-    tabInfo.classList.remove('active');
+  if (tabJadwal) {
+    tabJadwal.addEventListener('click', () => {
+      tabJadwal.classList.add('active');
+      if (tabTentang) tabTentang.classList.remove('active');
+      if (tabInfo) tabInfo.classList.remove('active');
 
-    routeDescBox.style.display = 'block';
-    tabInfoContent.style.display = 'none';
+      if (routeDescBox) routeDescBox.style.display = 'none';
+      if (tabInfoContent) tabInfoContent.style.display = 'none';
 
-    mobileDateContainer.style.display = 'none';
-    mobileQtyContainer.style.display = 'none';
-    mobileSearchFilter.style.display = 'none';
-    mobileBusList.style.display = 'none';
-  });
+      if (mobileDateContainer) mobileDateContainer.style.display = 'block';
+      if (mobileQtyContainer) mobileQtyContainer.style.display = 'flex';
+      if (mobileSearchFilter) mobileSearchFilter.style.display = 'flex';
+      if (mobileBusList) mobileBusList.style.display = 'block';
+    });
+  }
 
-  tabJadwal.addEventListener('click', () => {
-    tabJadwal.classList.add('active');
-    tabTentang.classList.remove('active');
-    tabInfo.classList.remove('active');
+  if (tabInfo) {
+    tabInfo.addEventListener('click', () => {
+      tabInfo.classList.add('active');
+      if (tabTentang) tabTentang.classList.remove('active');
+      if (tabJadwal) tabJadwal.classList.remove('active');
 
-    routeDescBox.style.display = 'none';
-    tabInfoContent.style.display = 'none';
+      if (routeDescBox) routeDescBox.style.display = 'none';
+      if (tabInfoContent) tabInfoContent.style.display = 'flex';
 
-    mobileDateContainer.style.display = 'block';
-    mobileQtyContainer.style.display = 'flex';
-    mobileSearchFilter.style.display = 'flex';
-    mobileBusList.style.display = 'block';
-  });
-
-  tabInfo.addEventListener('click', () => {
-    tabInfo.classList.add('active');
-    tabTentang.classList.remove('active');
-    tabJadwal.classList.remove('active');
-
-    routeDescBox.style.display = 'none';
-    tabInfoContent.style.display = 'flex';
-
-    mobileDateContainer.style.display = 'none';
-    mobileQtyContainer.style.display = 'none';
-    mobileSearchFilter.style.display = 'none';
-    mobileBusList.style.display = 'none';
-  });
+      if (mobileDateContainer) mobileDateContainer.style.display = 'none';
+      if (mobileQtyContainer) mobileQtyContainer.style.display = 'none';
+      if (mobileSearchFilter) mobileSearchFilter.style.display = 'none';
+      if (mobileBusList) mobileBusList.style.display = 'none';
+    });
+  }
 
 
-  // --- FEATURE 3: FITUR RIWAYAT PEMBELIAN (PURCHASE HISTORY) ---
-  const navHistoryLink = document.getElementById('nav-history-link');
-  const btnMobileHistory = document.getElementById('btn-mobile-history');
-  const historyModal = document.getElementById('history-modal');
-  const btnCloseHistoryModal = document.getElementById('btn-close-history-modal');
-  const historyItemsContainer = document.getElementById('history-items-container');
-  const historyCountBadge = document.getElementById('history-count-badge');
-
+  // ==========================================================================
+  // 8. FEATURE 3: RIWAYAT PEMBELIAN (PURCHASE HISTORY)
+  // ==========================================================================
   function renderPurchaseHistory() {
-    historyCountBadge.textContent = state.purchaseHistory.length;
+    if (historyCountBadge) {
+      historyCountBadge.textContent = state.purchaseHistory.length;
+    }
+
+    if (!historyItemsContainer) return;
 
     if (state.purchaseHistory.length === 0) {
       historyItemsContainer.innerHTML = `
@@ -246,13 +463,13 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `).join('');
 
-    // Attach click listeners to "Lihat E-Tiket" buttons in history
+    // Attach click listeners to "Lihat E-Tiket"
     historyItemsContainer.querySelectorAll('.btn-history-view-ticket').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-history-id');
         const record = state.purchaseHistory.find(h => h.id === id);
         if (record) {
-          historyModal.style.display = 'none';
+          if (historyModal) historyModal.style.display = 'none';
           openSpecificTicketModal(record);
         }
       });
@@ -260,142 +477,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openSpecificTicketModal(record) {
-    document.getElementById('receipt-booking-code').textContent = record.id;
-    document.getElementById('receipt-schedule').textContent = `${record.dateLabel} · ${record.departure}`;
-    document.getElementById('receipt-pax').textContent = `${record.pax} Penumpang`;
-    document.getElementById('receipt-method').textContent = record.method;
-    document.getElementById('receipt-amount').textContent = `Rp${record.totalAmount.toLocaleString('id-ID')}`;
-    successModal.style.display = 'flex';
+    const elCode = document.getElementById('receipt-booking-code');
+    const elSched = document.getElementById('receipt-schedule');
+    const elPax = document.getElementById('receipt-pax');
+    const elMethod = document.getElementById('receipt-method');
+    const elAmount = document.getElementById('receipt-amount');
+
+    if (elCode) elCode.textContent = record.id;
+    if (elSched) elSched.textContent = `${record.dateLabel} · ${record.departure}`;
+    if (elPax) elPax.textContent = `${record.pax} Penumpang`;
+    if (elMethod) elMethod.textContent = record.method;
+    if (elAmount) elAmount.textContent = `Rp${record.totalAmount.toLocaleString('id-ID')}`;
+
+    if (successModal) successModal.style.display = 'flex';
   }
 
-  navHistoryLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    renderPurchaseHistory();
-    historyModal.style.display = 'flex';
-  });
-
-  btnMobileHistory.addEventListener('click', () => {
-    renderPurchaseHistory();
-    historyModal.style.display = 'flex';
-  });
-
-  btnCloseHistoryModal.addEventListener('click', () => {
-    historyModal.style.display = 'none';
-  });
-
-
-  // --- DESKTOP STEP MANAGEMENT (Pemesanan <-> Pembayaran) ---
-  const desktopStepPemesanan = document.getElementById('desktop-step-pemesanan');
-  const desktopStepPembayaran = document.getElementById('desktop-step-pembayaran');
-  const dStepNode1 = document.getElementById('d-step-node-1');
-  const dStepNode2 = document.getElementById('d-step-node-2');
-  const dStepConnector = document.getElementById('d-step-connector');
-  const navJadwalLink = document.getElementById('nav-jadwal-link');
-  const navBayarLink = document.getElementById('nav-bayar-link');
-
-  const dBtnProceedPayment = document.getElementById('d-btn-proceed-payment');
-  const dBtnBackToBooking = document.getElementById('d-btn-back-to-booking');
-
-  function goToStep(step) {
-    state.currentStep = step;
-
-    if (step === 1) {
-      desktopStepPemesanan.style.display = 'block';
-      desktopStepPembayaran.style.display = 'none';
-
-      dStepNode1.className = 'step-node active';
-      dStepNode2.className = 'step-node';
-      dStepConnector.className = 'step-connector';
-
-      navJadwalLink.classList.add('active');
-      navBayarLink.classList.remove('active');
-
-      screenJadwal.classList.add('active');
-      screenPembayaran.classList.remove('active');
-
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      desktopStepPemesanan.style.display = 'none';
-      desktopStepPembayaran.style.display = 'block';
-
-      dStepNode1.className = 'step-node completed';
-      dStepNode2.className = 'step-node active';
-      dStepConnector.className = 'step-connector completed';
-
-      navBayarLink.classList.add('active');
-      navJadwalLink.classList.remove('active');
-
-      screenPembayaran.classList.add('active');
-      screenJadwal.classList.remove('active');
-
-      updateAllDetails();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  if (navHistoryLink) {
+    navHistoryLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderPurchaseHistory();
+      if (historyModal) historyModal.style.display = 'flex';
+    });
   }
 
-  dBtnProceedPayment.addEventListener('click', () => {
-    goToStep(2);
-    showToast(`Melanjutkan pemesanan ${state.ticketQty} tiket.`);
-  });
+  if (btnMobileHistory) {
+    btnMobileHistory.addEventListener('click', () => {
+      renderPurchaseHistory();
+      if (historyModal) historyModal.style.display = 'flex';
+    });
+  }
 
-  dBtnBackToBooking.addEventListener('click', () => {
-    goToStep(1);
-  });
+  if (btnCloseHistoryModal) {
+    btnCloseHistoryModal.addEventListener('click', () => {
+      if (historyModal) historyModal.style.display = 'none';
+    });
+  }
 
-  dStepNode1.addEventListener('click', () => goToStep(1));
-  dStepNode2.addEventListener('click', () => goToStep(2));
-  navJadwalLink.addEventListener('click', (e) => { e.preventDefault(); goToStep(1); });
-  navBayarLink.addEventListener('click', (e) => { e.preventDefault(); goToStep(2); });
 
-  // Mobile Screen Transition Triggers
-  const screenJadwal = document.getElementById('screen-jadwal');
-  const screenPembayaran = document.getElementById('screen-pembayaran');
-  const btnProceedOrder = document.getElementById('btn-proceed-order');
-  const btnPaymentBack = document.getElementById('btn-payment-back');
-  const btnJadwalBack = document.getElementById('btn-jadwal-back');
-  const btnShare = document.getElementById('btn-share');
-  const btnSaveRoute = document.getElementById('btn-save-route');
-  const saveTitleText = document.getElementById('save-title-text');
-
-  btnProceedOrder.addEventListener('click', () => {
-    goToStep(2);
-  });
-
-  btnPaymentBack.addEventListener('click', () => {
-    goToStep(1);
-  });
-
-  btnJadwalBack.addEventListener('click', () => {
-    showToast('Kembali ke menu beranda');
-  });
-
-  btnShare.addEventListener('click', () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Jadwal Bandros - Bandung Tour On Bus',
-        text: 'Pesan tiket Bandros sekarang keliling Kota Bandung!',
-        url: window.location.href
-      }).catch(() => {});
-    } else {
-      showToast('Tautan berhasil disalin ke papan klip!');
-    }
-  });
-
-  btnSaveRoute.addEventListener('click', () => {
-    state.savedRoute = !state.savedRoute;
-    if (state.savedRoute) {
-      saveTitleText.textContent = 'Tersimpan!';
-      showToast('Rute Bandung Tour disimpan ke favorit!');
-    } else {
-      saveTitleText.textContent = 'Simpan rute';
-      showToast('Rute dihapus dari favorit');
-    }
-  });
-
-  // --- SYNCHRONIZED DATE SELECTION ---
-  const desktopDateItems = document.querySelectorAll('.desktop-date-item');
-  const mobileDateCards = document.querySelectorAll('.date-card');
-
+  // ==========================================================================
+  // 9. SYNCHRONIZED DATE PICKER
+  // ==========================================================================
   function setDate(dateStr, labelStr) {
     state.selectedDate = dateStr;
     state.selectedDateLabel = labelStr;
@@ -424,10 +545,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- SYNCHRONIZED BUS SELECTION ---
-  const desktopBusCards = document.querySelectorAll('.desktop-bus-card');
-  const mobileBusCards = document.querySelectorAll('.bus-item-card');
 
+  // ==========================================================================
+  // 10. SYNCHRONIZED BUS SELECTION
+  // ==========================================================================
   function selectBus(busId, departure, arrival, basePrice, seats) {
     state.selectedBus.id = busId;
     state.selectedBus.departure = departure;
@@ -435,31 +556,32 @@ document.addEventListener('DOMContentLoaded', () => {
     state.selectedBus.basePrice = basePrice;
     state.selectedBus.seatsAvailable = seats;
 
-    // If current qty exceeds seats of newly selected bus, adjust it down
+    // Check quantity bounds against available seats
     if (state.ticketQty > seats) {
       setTicketQty(seats);
     } else {
       setTicketQty(state.ticketQty);
     }
 
-    // Update Desktop Bus Cards
+    // Update Desktop Cards
     desktopBusCards.forEach(card => {
       const isSelected = card.getAttribute('data-bus-id') === busId;
       const btn = card.querySelector('.d-select-btn');
       card.classList.toggle('selected', isSelected);
-      btn.classList.toggle('selected', isSelected);
-
-      if (isSelected) {
-        btn.innerHTML = `
-          <img src="assets/check-circle.svg" alt="Terpilih" class="d-btn-check-icon">
-          <span class="d-btn-text">Jadwal Terpilih</span>
-        `;
-      } else {
-        btn.innerHTML = `<span class="d-btn-text">Pilih Jadwal Ini</span>`;
+      if (btn) {
+        btn.classList.toggle('selected', isSelected);
+        if (isSelected) {
+          btn.innerHTML = `
+            <img src="assets/check-circle.svg" alt="Terpilih" class="d-btn-check-icon">
+            <span class="d-btn-text">Jadwal Terpilih</span>
+          `;
+        } else {
+          btn.innerHTML = `<span class="d-btn-text">Pilih Jadwal Ini</span>`;
+        }
       }
     });
 
-    // Update Mobile Bus Cards
+    // Update Mobile Cards
     mobileBusCards.forEach(card => {
       const isSelected = card.getAttribute('data-bus-id') === busId;
       const badge = card.querySelector('.selected-check-badge');
@@ -477,6 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     updateAllDetails();
+    showToast(`Jadwal dipilih: ${departure} WIB`);
   }
 
   desktopBusCards.forEach(card => {
@@ -503,7 +626,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- REFRESH ALL UI LABELS & DETAILS (WITH QUANTITY MULTIPLIER) ---
+
+  // ==========================================================================
+  // 11. REFRESH ALL LABELS, PRICES & TOTALS
+  // ==========================================================================
   function updateAllDetails() {
     const qty = state.ticketQty;
     const ticketSubtotal = state.selectedBus.basePrice * qty;
@@ -517,112 +643,165 @@ document.addEventListener('DOMContentLoaded', () => {
     const scheduleFull = `${state.selectedBus.departure}–${state.selectedBus.arrival} · Leuwipanjang`;
 
     // 1. Desktop Step 1 Booking Action Bar
-    document.getElementById('d-action-bus-name').textContent = `Bandung Tour On Bus • ${state.selectedBus.departure}`;
-    document.getElementById('d-action-pax-count').textContent = qty;
-    document.getElementById('d-action-date-str').textContent = `${state.selectedDateLabel} (${qty} Penumpang)`;
-    document.getElementById('d-action-price').textContent = formattedSubtotal;
+    const dActBus = document.getElementById('d-action-bus-name');
+    const dActPax = document.getElementById('d-action-pax-count');
+    const dActDate = document.getElementById('d-action-date-str');
+    const dActPrice = document.getElementById('d-action-price');
+
+    if (dActBus) dActBus.textContent = `Bandung Tour On Bus • ${state.selectedBus.departure}`;
+    if (dActPax) dActPax.textContent = qty;
+    if (dActDate) dActDate.textContent = `${state.selectedDateLabel} (${qty} Penumpang)`;
+    if (dActPrice) dActPrice.textContent = formattedSubtotal;
 
     // 2. Desktop Step 2 Payment Screen Details
-    document.getElementById('d-payment-date').textContent = state.selectedDateLabel;
-    document.getElementById('d-payment-hour').textContent = scheduleRange;
-    document.getElementById('d-payment-pax-str').textContent = `${qty} Penumpang`;
+    const dPayDate = document.getElementById('d-payment-date');
+    const dPayHour = document.getElementById('d-payment-hour');
+    const dPayPaxStr = document.getElementById('d-payment-pax-str');
+    const dTicketType = document.getElementById('d-ticket-type-label');
+    const dTicketPax = document.getElementById('d-ticket-pax-count');
+    const dTxTicketLbl = document.getElementById('d-tx-ticket-label');
+    const dTxTicketPrice = document.getElementById('d-tx-ticket-price');
+    const dTxTotal = document.getElementById('d-tx-total');
+    const dBtnAmount = document.getElementById('d-btn-amount');
 
-    document.getElementById('d-ticket-type-label').textContent = `${qty}x TIKET BANDUNG TOUR`;
-    document.getElementById('d-ticket-pax-count').textContent = `${qty} Penumpang`;
-
-    document.getElementById('d-tx-ticket-label').textContent = `Harga Tiket Bus (${qty} Penumpang)`;
-    document.getElementById('d-tx-ticket-price').textContent = `${formattedBase} × ${qty} = ${formattedSubtotal}`;
-    document.getElementById('d-tx-total').textContent = formattedTotal;
-    document.getElementById('d-btn-amount').textContent = formattedTotal;
+    if (dPayDate) dPayDate.textContent = state.selectedDateLabel;
+    if (dPayHour) dPayHour.textContent = scheduleRange;
+    if (dPayPaxStr) dPayPaxStr.textContent = `${qty} Penumpang`;
+    if (dTicketType) dTicketType.textContent = `${qty}x TIKET BANDUNG TOUR`;
+    if (dTicketPax) dTicketPax.textContent = `${qty} Penumpang`;
+    if (dTxTicketLbl) dTxTicketLbl.textContent = `Harga Tiket Bus (${qty} Penumpang)`;
+    if (dTxTicketPrice) dTxTicketPrice.textContent = `${formattedBase} × ${qty} = ${formattedSubtotal}`;
+    if (dTxTotal) dTxTotal.textContent = formattedTotal;
+    if (dBtnAmount) dBtnAmount.textContent = formattedTotal;
 
     // 3. Mobile Step 1 & Step 2 Details
-    document.getElementById('footer-selected-bus').textContent = `Jadwal Bandros · ${state.selectedBus.departure}`;
-    document.getElementById('m-footer-pax').textContent = qty;
-    document.getElementById('footer-selected-date').textContent = `${state.selectedDateLabel} (${qty} Penumpang)`;
+    const mFooterBus = document.getElementById('footer-selected-bus');
+    const mFooterPax = document.getElementById('m-footer-pax');
+    const mFooterDate = document.getElementById('footer-selected-date');
+    const mTicketDate = document.getElementById('ticket-date-val');
+    const mTicketSched = document.getElementById('ticket-schedule-val');
+    const mTicketPaxStrip = document.getElementById('m-ticket-strip-pax');
+    const mTxCountLbl = document.getElementById('m-tx-ticket-count-label');
+    const mTxPaxLbl = document.getElementById('m-tx-pax-label');
+    const mTxPrice = document.getElementById('tx-ticket-price');
+    const mTxTotal = document.getElementById('tx-total-price');
+    const mFooterPayAmt = document.getElementById('footer-pay-amount');
 
-    document.getElementById('ticket-date-val').textContent = state.selectedDateLabel;
-    document.getElementById('ticket-schedule-val').textContent = scheduleFull;
+    if (mFooterBus) mFooterBus.textContent = `Jadwal Bandros · ${state.selectedBus.departure}`;
+    if (mFooterPax) mFooterPax.textContent = qty;
+    if (mFooterDate) mFooterDate.textContent = `${state.selectedDateLabel} (${qty} Penumpang)`;
+    if (mTicketDate) mTicketDate.textContent = state.selectedDateLabel;
+    if (mTicketSched) mTicketSched.textContent = scheduleFull;
+    if (mTicketPaxStrip) mTicketPaxStrip.textContent = `${qty} penumpang`;
+    if (mTxCountLbl) mTxCountLbl.textContent = `${qty} TIKET`;
+    if (mTxPaxLbl) mTxPaxLbl.textContent = `${qty} penumpang`;
+    if (mTxPrice) mTxPrice.textContent = `${formattedBase} × ${qty} = ${formattedSubtotal}`;
+    if (mTxTotal) mTxTotal.textContent = formattedTotal;
+    if (mFooterPayAmt) mFooterPayAmt.textContent = formattedTotal;
 
-    document.getElementById('m-ticket-strip-pax').textContent = `${qty} penumpang`;
-    document.getElementById('m-tx-ticket-count-label').textContent = `${qty} TIKET`;
-    document.getElementById('m-tx-pax-label').textContent = `${qty} penumpang`;
-
-    document.getElementById('tx-ticket-price').textContent = `${formattedBase} × ${qty} = ${formattedSubtotal}`;
-    document.getElementById('tx-total-price').textContent = formattedTotal;
-    document.getElementById('footer-pay-amount').textContent = formattedTotal;
-
-    // 4. Modal Details
-    document.getElementById('receipt-schedule').textContent = `${state.selectedDateLabel} · ${state.selectedBus.departure}`;
-    document.getElementById('receipt-pax').textContent = `${qty} Penumpang`;
-    document.getElementById('receipt-amount').textContent = formattedTotal;
+    // 4. Receipt Modal Details
+    const rSched = document.getElementById('receipt-schedule');
+    const rPax = document.getElementById('receipt-pax');
+    const rAmt = document.getElementById('receipt-amount');
+    if (rSched) rSched.textContent = `${state.selectedDateLabel} · ${state.selectedBus.departure}`;
+    if (rPax) rPax.textContent = `${qty} Penumpang`;
+    if (rAmt) rAmt.textContent = formattedTotal;
   }
 
-  // --- PAYMENT METHOD TOGGLE (QRIS vs DANA) ---
-  const dMethodQris = document.getElementById('d-method-qris');
-  const dMethodDana = document.getElementById('d-method-dana');
-  const mMethodQris = document.getElementById('method-qris');
-  const mMethodDana = document.getElementById('method-dana');
 
+  // ==========================================================================
+  // 12. PAYMENT METHOD SELECTION (QRIS vs DANA)
+  // ==========================================================================
   function setPaymentMethod(method) {
     state.activePaymentMethod = method;
+
     if (method === 'qris') {
-      dMethodQris.classList.add('selected');
-      dMethodDana.classList.remove('selected');
-      dMethodQris.querySelector('.d-radio-state').innerHTML = `<img src="assets/qris-check.svg" alt="Dipilih" class="d-radio-icon">`;
-      dMethodDana.querySelector('.d-radio-state').innerHTML = `<span class="d-empty-radio"></span>`;
+      if (dMethodQris) {
+        dMethodQris.classList.add('selected');
+        const s = dMethodQris.querySelector('.d-radio-state');
+        if (s) s.innerHTML = `<img src="assets/qris-check.svg" alt="Dipilih" class="d-radio-icon">`;
+      }
+      if (dMethodDana) {
+        dMethodDana.classList.remove('selected');
+        const s = dMethodDana.querySelector('.d-radio-state');
+        if (s) s.innerHTML = `<span class="d-empty-radio"></span>`;
+      }
 
-      mMethodQris.classList.add('selected');
-      mMethodDana.classList.remove('selected');
-      mMethodQris.querySelector('.method-radio-state').innerHTML = `<div class="radio-selected-circle"><img src="assets/qris-check.svg" alt="Dipilih"></div>`;
-      mMethodDana.querySelector('.method-radio-state').innerHTML = `<div class="radio-empty-circle"></div>`;
+      if (mMethodQris) {
+        mMethodQris.classList.add('selected');
+        const s = mMethodQris.querySelector('.method-radio-state');
+        if (s) s.innerHTML = `<div class="radio-selected-circle"><img src="assets/qris-check.svg" alt="Dipilih"></div>`;
+      }
+      if (mMethodDana) {
+        mMethodDana.classList.remove('selected');
+        const s = mMethodDana.querySelector('.method-radio-state');
+        if (s) s.innerHTML = `<div class="radio-empty-circle"></div>`;
+      }
     } else {
-      dMethodDana.classList.add('selected');
-      dMethodQris.classList.remove('selected');
-      dMethodDana.querySelector('.d-radio-state').innerHTML = `<img src="assets/qris-check.svg" alt="Dipilih" class="d-radio-icon">`;
-      dMethodQris.querySelector('.d-radio-state').innerHTML = `<span class="d-empty-radio"></span>`;
+      if (dMethodDana) {
+        dMethodDana.classList.add('selected');
+        const s = dMethodDana.querySelector('.d-radio-state');
+        if (s) s.innerHTML = `<img src="assets/qris-check.svg" alt="Dipilih" class="d-radio-icon">`;
+      }
+      if (dMethodQris) {
+        dMethodQris.classList.remove('selected');
+        const s = dMethodQris.querySelector('.d-radio-state');
+        if (s) s.innerHTML = `<span class="d-empty-radio"></span>`;
+      }
 
-      mMethodDana.classList.add('selected');
-      mMethodQris.classList.remove('selected');
-      mMethodDana.querySelector('.method-radio-state').innerHTML = `<div class="radio-selected-circle"><img src="assets/qris-check.svg" alt="Dipilih"></div>`;
-      mMethodQris.querySelector('.method-radio-state').innerHTML = `<div class="radio-empty-circle"></div>`;
+      if (mMethodDana) {
+        mMethodDana.classList.add('selected');
+        const s = mMethodDana.querySelector('.method-radio-state');
+        if (s) s.innerHTML = `<div class="radio-selected-circle"><img src="assets/qris-check.svg" alt="Dipilih"></div>`;
+      }
+      if (mMethodQris) {
+        mMethodQris.classList.remove('selected');
+        const s = mMethodQris.querySelector('.method-radio-state');
+        if (s) s.innerHTML = `<div class="radio-empty-circle"></div>`;
+      }
     }
+    showToast(`Metode: ${method.toUpperCase()}`);
   }
 
-  dMethodQris.addEventListener('click', () => setPaymentMethod('qris'));
-  dMethodDana.addEventListener('click', () => setPaymentMethod('dana'));
-  mMethodQris.addEventListener('click', () => setPaymentMethod('qris'));
-  mMethodDana.addEventListener('click', () => setPaymentMethod('dana'));
+  if (dMethodQris) dMethodQris.addEventListener('click', () => setPaymentMethod('qris'));
+  if (dMethodDana) dMethodDana.addEventListener('click', () => setPaymentMethod('dana'));
+  if (mMethodQris) mMethodQris.addEventListener('click', () => setPaymentMethod('qris'));
+  if (mMethodDana) mMethodDana.addEventListener('click', () => setPaymentMethod('dana'));
 
-  // --- COUNTDOWN TIMER ---
-  const desktopCountdown = document.getElementById('desktop-countdown');
-  const mobileCountdown = document.getElementById('countdown-val');
 
+  // ==========================================================================
+  // 13. COUNTDOWN TIMER
+  // ==========================================================================
   setInterval(() => {
     if (state.countdownSeconds > 0) {
       state.countdownSeconds--;
       const mins = Math.floor(state.countdownSeconds / 60);
       const secs = state.countdownSeconds % 60;
       const str = `${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
-      desktopCountdown.textContent = str;
-      mobileCountdown.textContent = str;
+      if (desktopCountdown) desktopCountdown.textContent = str;
+      if (mobileCountdown) mobileCountdown.textContent = str;
     } else {
-      desktopCountdown.textContent = '00 : 00';
-      mobileCountdown.textContent = '00 : 00';
+      if (desktopCountdown) desktopCountdown.textContent = '00 : 00';
+      if (mobileCountdown) mobileCountdown.textContent = '00 : 00';
     }
   }, 1000);
 
-  // --- SEARCH & FILTER (Desktop) ---
-  const desktopBusSearch = document.getElementById('desktop-bus-search');
-  const desktopChips = document.querySelectorAll('.d-chip');
 
-  desktopBusSearch.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    desktopBusCards.forEach(card => {
-      const text = card.textContent.toLowerCase();
-      card.style.display = text.includes(q) ? 'block' : 'none';
+  // ==========================================================================
+  // 14. SEARCH & FILTER (Desktop & Mobile)
+  // ==========================================================================
+  // Desktop Search
+  if (desktopBusSearch) {
+    desktopBusSearch.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      desktopBusCards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(q) ? 'block' : 'none';
+      });
     });
-  });
+  }
 
+  // Desktop Filter Chips
   desktopChips.forEach(chip => {
     chip.addEventListener('click', () => {
       desktopChips.forEach(c => c.classList.remove('active'));
@@ -643,20 +822,92 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- CHECKOUT SIMULATION MODALS ---
-  const dBtnPayNow = document.getElementById('d-btn-pay-now');
-  const mBtnPayNow = document.getElementById('btn-pay-now');
-  const paymentModal = document.getElementById('payment-modal');
-  const btnClosePaymentModal = document.getElementById('btn-close-payment-modal');
-  const modalPaymentTitle = document.getElementById('modal-payment-title');
-  const modalPaymentBody = document.getElementById('modal-payment-body');
-  const successModal = document.getElementById('success-modal');
-  const btnDownloadTicket = document.getElementById('btn-download-ticket');
-  const btnReturnHome = document.getElementById('btn-return-home');
+  // Mobile Search Input
+  if (mobileBusSearch) {
+    mobileBusSearch.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      mobileBusCards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(q) ? 'block' : 'none';
+      });
+    });
+  }
 
+  // Mobile Filter Modal
+  if (btnOpenFilter) {
+    btnOpenFilter.addEventListener('click', () => {
+      if (filterModal) filterModal.style.display = 'flex';
+    });
+  }
+
+  if (btnCloseFilterModal) {
+    btnCloseFilterModal.addEventListener('click', () => {
+      if (filterModal) filterModal.style.display = 'none';
+    });
+  }
+
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      filterChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.activeTimeFilter = chip.getAttribute('data-filter-time');
+    });
+  });
+
+  if (btnApplyFilter) {
+    btnApplyFilter.addEventListener('click', () => {
+      if (filterModal) filterModal.style.display = 'none';
+      mobileBusCards.forEach(card => {
+        const dep = card.getAttribute('data-departure');
+        if (state.activeTimeFilter === 'all') {
+          card.style.display = 'block';
+        } else if (state.activeTimeFilter === 'pagi') {
+          card.style.display = (dep === '07.00' || dep === '08.30') ? 'block' : 'none';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      showToast('Filter waktu diterapkan');
+    });
+  }
+
+  if (btnResetFilter) {
+    btnResetFilter.addEventListener('click', () => {
+      filterChips.forEach(c => c.classList.remove('active'));
+      const defaultChip = document.querySelector('.filter-chip[data-filter-time="all"]');
+      if (defaultChip) defaultChip.classList.add('active');
+      state.activeTimeFilter = 'all';
+      mobileBusCards.forEach(card => card.style.display = 'block');
+      if (filterModal) filterModal.style.display = 'none';
+      showToast('Filter direset');
+    });
+  }
+
+  // Mobile Sort Toggle
+  if (sortToggle) {
+    sortToggle.addEventListener('click', () => {
+      state.sortAscending = !state.sortAscending;
+      if (currentSortText) {
+        currentSortText.textContent = state.sortAscending ? 'Paling awal' : 'Paling akhir';
+      }
+      const busListContainer = document.getElementById('bus-cards');
+      if (busListContainer) {
+        const cards = Array.from(busListContainer.querySelectorAll('.bus-item-card'));
+        cards.reverse().forEach(c => busListContainer.appendChild(c));
+      }
+      showToast(state.sortAscending ? 'Urutan: Paling awal' : 'Urutan: Paling akhir');
+    });
+  }
+
+
+  // ==========================================================================
+  // 15. CHECKOUT SIMULATION MODALS
+  // ==========================================================================
   function openPaymentModal() {
     const total = (state.selectedBus.basePrice * state.ticketQty) + state.selectedBus.serviceFee;
     const formattedTotal = `Rp${total.toLocaleString('id-ID')}`;
+
+    if (!modalPaymentTitle || !modalPaymentBody || !paymentModal) return;
 
     if (state.activePaymentMethod === 'qris') {
       modalPaymentTitle.textContent = 'Scan QRIS Pembayaran';
@@ -677,7 +928,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modalPaymentTitle.textContent = 'Bayar dengan DANA';
       modalPaymentBody.innerHTML = `
         <div class="qris-simulation-box">
-          <div style="background: #edf8ff; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+          <div style="background: #edf8ff; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; margin-left: auto; margin-right: auto;">
             <img src="assets/dana-wallet.svg" alt="DANA" style="width: 28px; height: 28px;">
           </div>
           <p style="font-size: 14px; font-weight: 700; color: #1c3158;">Akun DANA Terhubung</p>
@@ -690,10 +941,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     paymentModal.style.display = 'flex';
 
-    document.getElementById('btn-trigger-paid').addEventListener('click', () => {
-      paymentModal.style.display = 'none';
-      completePaymentAndSaveHistory();
-    });
+    const btnTriggerPaid = document.getElementById('btn-trigger-paid');
+    if (btnTriggerPaid) {
+      btnTriggerPaid.addEventListener('click', () => {
+        paymentModal.style.display = 'none';
+        completePaymentAndSaveHistory();
+      });
+    }
   }
 
   function completePaymentAndSaveHistory() {
@@ -712,37 +966,50 @@ document.addEventListener('DOMContentLoaded', () => {
       status: 'LUNAS (Aktif)'
     };
     state.purchaseHistory.unshift(newRecord);
-    historyCountBadge.textContent = state.purchaseHistory.length;
+    renderPurchaseHistory();
 
     // Open success modal
-    document.getElementById('receipt-booking-code').textContent = randomCode;
-    document.getElementById('receipt-method').textContent = state.activePaymentMethod.toUpperCase();
-    document.getElementById('receipt-pax').textContent = `${state.ticketQty} Penumpang`;
-    document.getElementById('receipt-schedule').textContent = `${state.selectedDateLabel} · ${state.selectedBus.departure}`;
-    document.getElementById('receipt-amount').textContent = `Rp${total.toLocaleString('id-ID')}`;
-    successModal.style.display = 'flex';
+    const elCode = document.getElementById('receipt-booking-code');
+    const elMethod = document.getElementById('receipt-method');
+    const elPax = document.getElementById('receipt-pax');
+    const elSched = document.getElementById('receipt-schedule');
+    const elAmt = document.getElementById('receipt-amount');
+
+    if (elCode) elCode.textContent = randomCode;
+    if (elMethod) elMethod.textContent = state.activePaymentMethod.toUpperCase();
+    if (elPax) elPax.textContent = `${state.ticketQty} Penumpang`;
+    if (elSched) elSched.textContent = `${state.selectedDateLabel} · ${state.selectedBus.departure}`;
+    if (elAmt) elAmt.textContent = `Rp${total.toLocaleString('id-ID')}`;
+
+    if (successModal) successModal.style.display = 'flex';
   }
 
-  dBtnPayNow.addEventListener('click', openPaymentModal);
-  mBtnPayNow.addEventListener('click', openPaymentModal);
+  if (dBtnPayNow) dBtnPayNow.addEventListener('click', openPaymentModal);
+  if (mBtnPayNow) mBtnPayNow.addEventListener('click', openPaymentModal);
 
-  btnClosePaymentModal.addEventListener('click', () => {
-    paymentModal.style.display = 'none';
-  });
+  if (btnClosePaymentModal) {
+    btnClosePaymentModal.addEventListener('click', () => {
+      if (paymentModal) paymentModal.style.display = 'none';
+    });
+  }
 
-  btnDownloadTicket.addEventListener('click', () => {
-    showToast('E-Tiket Bandros berhasil disimpan ke perangkat Anda!');
-    successModal.style.display = 'none';
-  });
+  if (btnDownloadTicket) {
+    btnDownloadTicket.addEventListener('click', () => {
+      showToast('E-Tiket Bandros berhasil disimpan ke perangkat Anda!');
+      if (successModal) successModal.style.display = 'none';
+    });
+  }
 
-  btnReturnHome.addEventListener('click', () => {
-    successModal.style.display = 'none';
-    renderPurchaseHistory();
-    historyModal.style.display = 'flex';
-  });
+  if (btnReturnHome) {
+    btnReturnHome.addEventListener('click', () => {
+      if (successModal) successModal.style.display = 'none';
+      renderPurchaseHistory();
+      if (historyModal) historyModal.style.display = 'flex';
+    });
+  }
 
   // Close modals on backdrop click
-  [paymentModal, successModal, historyModal, infoModal].forEach(modal => {
+  [paymentModal, successModal, historyModal, infoModal, filterModal].forEach(modal => {
     if (modal) {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.style.display = 'none';
@@ -750,7 +1017,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initialize
+
+  // ==========================================================================
+  // 16. INITIALIZE STATE & VIEW
+  // ==========================================================================
+  // Set initial ticket quantity and prices
   setTicketQty(1);
+
+  // Render initial purchase history
   renderPurchaseHistory();
+
+  // If initial load is mobile size, activate mobile view
+  if (window.innerWidth < 768) {
+    switchView('mobile');
+  } else {
+    switchView('desktop');
+  }
 });
+
