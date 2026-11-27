@@ -1699,6 +1699,12 @@ input, select {
 /* ==========================================================================
    MOBILE VIEW (1:1 Frame Figma)
    ========================================================================== */
+@media (min-width: 768px) {
+  .mobile-view-container {
+    display: none;
+  }
+}
+
 .mobile-view-container {
   padding: 1.5rem 0 3rem;
   display: flex;
@@ -3143,8 +3149,8 @@ input, select {
 }
 
 @media (max-width: 767px) {
-  .desktop-navbar .nav-links {
-    display: none;
+  .desktop-navbar {
+    display: none !important;
   }
 
   .desktop-view-container {
@@ -3154,13 +3160,69 @@ input, select {
   .mobile-view-container {
     display: flex !important;
     padding: 0;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .app-wrapper.mode-mobile {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
   }
 
   .app-wrapper.mode-mobile .screen-view {
     border-radius: 0;
     border: none;
     max-width: 100%;
+    width: 100%;
     min-height: 100vh;
     box-shadow: none;
+    overflow: visible;
   }
+
+  .screen-content {
+    min-height: 100vh;
+    height: auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .scrollable-body {
+    overflow-y: visible;
+    padding-bottom: 120px;
+    flex: 1;
+  }
+
+  .sticky-footer-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 500;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* Ensure smooth touch interactions on mobile */
+.date-card,
+.bus-item-card,
+.tab-item,
+.pill-btn-schedule,
+.bookmark-btn,
+.filter-btn,
+.sort-toggle-btn,
+.stepper-btn,
+.payment-method-card,
+.primary-action-btn,
+.btn-desktop-pay-now,
+.icon-btn,
+.step-node,
+.nav-link,
+.switch-btn,
+.filter-chip {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
